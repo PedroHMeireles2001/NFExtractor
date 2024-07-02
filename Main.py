@@ -3,12 +3,9 @@ import PyPDF2
 import pytesseract
 from pdf2image import convert_from_path
 
-# Defina o caminho para o arquivo PDF original
-pdf_path = 'notas_fiscais.pdf'
 
 # Crie uma pasta para armazenar os arquivos PDF separados
-output_folder = 'output'
-os.makedirs(output_folder, exist_ok=True)
+
 
 pytesseract.pytesseract.tesseract_cmd = os.path.join(os.getcwd(),"Tesseract/tesseract.exe")
 
@@ -31,29 +28,37 @@ def extract_invoice_number(text):
         return match.group(1).replace(' ', '').replace('.', '')
     return None
 
-# Abra o PDF original
-with open(pdf_path, 'rb') as pdf_file:
-    pdf_reader = PyPDF2.PdfReader(pdf_file)
-    num_pages = len(pdf_reader.pages)
+pdf_files = [f for f in os.listdir("input") if f.endswith('.pdf')]
 
-    # Processar cada página
-    for page_num in range(num_pages):
-        # Converter a página em uma imagem
-        images = convert_from_path(pdf_path, first_page=page_num + 1, last_page=page_num + 1, poppler_path=os.path.join(os.getcwd(),"poppler/Library/bin"))
+for pdf_path in pdf_files:
+    output_folder = f'output/{pdf_path.replace(".pdf","")}'
+    os.makedirs(output_folder, exist_ok=True)
+    print(os.path.join("input", pdf_path))
+    with open(os.path.join("input", pdf_path), 'rb') as pdf_file:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        num_pages = len(pdf_reader.pages)
 
-        if images:
-            # Extrair texto da imagem
-            text = extract_text_from_image(images[0])
+        # Processar cada página
+        for page_num in range(num_pages):
+            # Converter a página em uma imagem
+            images = convert_from_path(os.path.join("input",pdf_path), first_page=page_num + 1, last_page=page_num + 1,
+                                       poppler_path=os.path.join(os.getcwd(), "poppler/Library/bin"))
 
-            # Extrair o número da nota fiscal
-            invoice_number = extract_invoice_number(text)
+            if images:
+                # Extrair texto da imagem
+                text = extract_text_from_image(images[0])
 
-            if invoice_number:
-                # Salvar a página como um novo PDF com o nome contendo o número da nota fiscal
-                output_image_path = os.path.join(output_folder, f'nota_fiscal_{invoice_number}.png')
-                images[0].save(output_image_path, 'PNG')
-                print(f'Salvo: {output_image_path} ({(page_num / num_pages) * 100:.2f}%)')
+                # Extrair o número da nota fiscal
+                invoice_number = extract_invoice_number(text)
+
+                output_image_path = os.path.join(output_folder, f'Page_{page_num}.jpg')
+
+                if invoice_number:
+                    output_image_path = os.path.join(output_folder, f'{invoice_number}.jpg')
+
+                images[0].save(output_image_path, 'JPEG', quality=10)
+
             else:
-                print(f'Número da nota fiscal não encontrado na página {page_num + 1}')
-        else:
-            print(f'Erro ao converter a página {page_num + 1} para imagem')
+                print(f'Erro ao converter a página {page_num + 1} para imagem')
+# Abra o PDF original
+
